@@ -616,7 +616,7 @@ workflow.add_conditional_edges(
 workflow.add_edge("branch_clean_missing", "apply_cleaning")
 workflow.add_edge("branch_remove_outliers", "apply_cleaning")
 workflow.add_edge("branch_both", "apply_cleaning")
-workflow.add_edge("branch_none", "apply_cleaning")
+workflow.add_edge("branch_none", "output_state")
 
 # continue pipeline
 workflow.add_edge("apply_cleaning", "apply_text_processing")
@@ -845,6 +845,8 @@ def run_workflow(file):
     return graph.invoke(init_state)
 
 def handle_file_upload():
+    if "workflow_result" not in st.session_state:
+        st.session_state["workflow_result"] = None
     uploaded = st.file_uploader("Upload a CSV", type=["csv"])
 
     if uploaded is None:
@@ -888,6 +890,7 @@ def handle_file_upload():
                 "Select text columns for processing",
                 options=text_cols,
                 default=[],
+                key="selected_text_cols",
             )
             text_option = st.selectbox(
                 "Text processing option",
@@ -901,18 +904,33 @@ def handle_file_upload():
         return
 
     # Run the workflow
-    with st.spinner("Running workflow..."):
+    if run:
         init_state: DataState = {
             "csv_path": temp_path,
+            "action": "none",
             "text_action": text_option,
             "text_columns": selected_text_cols,
-            "action": "none",
         }
-        result: DataState = graph.invoke(init_state)
+        with st.spinner("Running workflow..."):
+            st.session_state["workflow_result"] = graph.invoke(init_state)
+
+
+    result = st.session_state["workflow_result"]
+    if result is None:
+        st.info("Configure options above, then click Run Cleaning Workflow.")
+        return
 
     # ---- RESULTS UI ----
-    df_before = result["df_before"]
-    df_after = result["df_after"]
+    df_before = result.get("df_before")
+    df_after = result.get("df_after", df_before)  # fallback
+
+    if df_before is None:
+        st.error("Workflow result missing df_before. Check load_data wiring.")
+        return
+
+    if df_after is None:
+        st.error("Workflow result missing df_after and df_before. Check apply_cleaning.")
+        return
 
     action = result.get("action", "none")
     st.subheader("Workflow decision")
