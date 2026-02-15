@@ -5,6 +5,8 @@ from langgraph.graph import StateGraph, START, END
 from dotenv import load_dotenv
 from pathlib import Path
 import io
+import streamlit as st
+import tempfile
 
 # Load environment variables from .env file
 load_dotenv()
@@ -69,6 +71,8 @@ def reasoning_node(state: DataState) -> DataState:
         "You are a data science assistant. "
         "Given this dataset summary, decide which single action is most appropriate: "
         "'clean_missing', 'remove_outliers', or 'both'.\n\n"
+        "Both means clean missing values and remove outliers. If possible, choose 'both' if it makes sense."
+        "Don't drop any rows or columns."
         f"{state['summary']}\n\n"
         "Respond only with one of: clean_missing, remove_outliers, both."
     )
@@ -104,6 +108,26 @@ def remove_outliers(state: DataState) -> DataState:
     state["df"] = df
     return state
 
+def both(state: DataState) -> DataState:
+    """Clean missing values and remove outliers."""
+    df = state["df"].copy()
+    for col in df.select_dtypes(include="number").columns:
+        df[col] = df[col].fillna(df[col].mean())
+    
+    """Remove outliers using IQR method."""
+    numeric_cols = df.select_dtypes(include="number").columns
+    
+    for col in numeric_cols:
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        df = df[(df[col] >= lower_bound) & (df[col] <= upper_bound)]
+    
+    state["df"] = df
+    
+    return state
 
 def describe_data(state: DataState) -> DataState:
     """Describe numeric columns after any cleaning."""
@@ -125,6 +149,7 @@ def route_action(state: DataState) -> str:
     mapping = {
         "clean_missing": "handle_missing_values",
         "remove_outliers": "remove_outliers",
+        "both": "both",
         "none": "describe_data",
     }
     return mapping.get(state["action"], "describe_data")
@@ -143,6 +168,7 @@ workflow.add_node("handle_missing_values", handle_missing_values)
 workflow.add_node("remove_outliers", remove_outliers)
 workflow.add_node("describe_data", describe_data)
 workflow.add_node("output_results", output_results)
+workflow.add_node("both", both)
 
 workflow.add_edge(START, "load_data")
 workflow.add_edge("load_data", "summarize_data")
@@ -151,10 +177,12 @@ workflow.add_conditional_edges("reasoning_node", route_action, {
     "handle_missing_values": "handle_missing_values",
     "remove_outliers": "remove_outliers",
     "describe_data": "describe_data",
+    "both": "both"
 })
 workflow.add_edge("handle_missing_values", "describe_data")
 workflow.add_edge("remove_outliers", "describe_data")
 workflow.add_edge("describe_data", "output_results")
+workflow.add_edge("both", "describe_data")
 workflow.add_edge("output_results", END)
 
 graph = workflow.compile()
@@ -176,6 +204,48 @@ def save_graph_visualization():
 
 
 # ---------------------------
+# 6.1. Streamlit UI
+# ---------------------------
+def run_workflow():
+    # Save workflow visualization
+    save_graph_visualization()
+
+    # Run the workflow
+    csv_path = str(PROJECT_ROOT / "data" / "missing_and_outliers.csv")
+
+    init_state: DataState = {
+        "csv_path": csv_path,
+        "df": None,
+        "action": "none",
+        "summary": "",
+    }
+
+    return graph.invoke(init_state)
+
+def handle_file_upload():
+    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+
+    if uploaded_file is not None:
+        # Extra safety check (even though type=["csv"] filters it)
+        if not uploaded_file.name.lower().endswith(".csv"):
+            st.error("Please upload a valid CSV file.")
+            return
+
+        # Save to a temporary file so your workflow can access it
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
+            tmp_file.write(uploaded_file.getbuffer())
+            temp_path = tmp_file.name
+
+        st.success("File uploaded successfully.")
+
+        if st.button("Run Workflow"):
+            with st.spinner("Processing..."):
+                result = run_workflow(temp_path)
+
+            st.success("Workflow complete.")
+            st.write(result)
+
+# ---------------------------
 # 7. Run Example
 # ---------------------------
 
@@ -184,7 +254,7 @@ if __name__ == "__main__":
     save_graph_visualization()
     
     # Run the workflow
-    csv_path = str(PROJECT_ROOT / "data" / "missing.csv")
+    csv_path = str(PROJECT_ROOT / "data" / "missing_and_outliers.csv")
     init_state: DataState = {
         "csv_path": csv_path,
         "df": None,
