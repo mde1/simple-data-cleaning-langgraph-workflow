@@ -25,5 +25,5 @@ ENV STREAMLIT_SERVER_PORT=8501 \
     STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-    CMD ["python", "-m", "streamlit", "run", "workflows/streamlitUI.py", "--server.address=0.0.0.0", "--server.port=8501"]
+    CMD ["sh", "-c", "python -m streamlit run workflows/streamlitUI.py --server.address=0.0.0.0 --server.port=${PORT:-8501}"]
 
