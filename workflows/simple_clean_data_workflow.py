@@ -43,7 +43,7 @@ class DataState(TypedDict, total=False):
     viz_reason: str
 
     # text cleaning
-    text_action: Literal["lowercase", "tokenize", "lowercase+tokeniza", "none"]
+    text_action: Literal["lowercase", "tokenize", "both", "none"]
     text_columns: list[str]
 
     # Decision
@@ -120,9 +120,17 @@ def apply_cleaning(state: DataState) -> DataState:
     return state
 
 def apply_text_processing(state: DataState) -> DataState:
-    df = state["df_after"].copy()
-    action = state.get("text_action", "none")
+    df = state.get("df_after", state.get("df_before"))
+    if df is None:
+        return state
+    df = df.copy()
+
+    action = (state.get("text_action", "none") or "none").strip().lower()
     columns = state.get("text_columns", [])
+
+    # normalize user-friendly label
+    if action == "both":
+        action = "both"
 
     if action == "lowercase":
         df = lowercase_text_columns(df, columns if columns else None)
@@ -130,7 +138,7 @@ def apply_text_processing(state: DataState) -> DataState:
     elif action == "tokenize":
         df = tokenize_columns(df, columns)
 
-    elif action == "lowercase+tokeniza":
+    elif action == "both":
         df = lowercase_text_columns(df, columns if columns else None)
         df = tokenize_columns(df, columns)
 
@@ -138,7 +146,20 @@ def apply_text_processing(state: DataState) -> DataState:
     return state
 
 def summarize_after(state: DataState) -> DataState:
-    state["summary_after"] = make_summary(state["df_after"])
+    df = state.get("df_after")
+    if df is None:
+        df = state.get("df_before")
+
+    if df is None:
+        state["summary_after"] = {
+            "shape": None,
+            "missing_total": None,
+            "missing_by_col": None,
+            "numeric_describe": None,
+        }
+        return state
+
+    state["summary_after"] = make_summary(df)
     return state
 
 
@@ -616,7 +637,7 @@ workflow.add_conditional_edges(
 workflow.add_edge("branch_clean_missing", "apply_cleaning")
 workflow.add_edge("branch_remove_outliers", "apply_cleaning")
 workflow.add_edge("branch_both", "apply_cleaning")
-workflow.add_edge("branch_none", "output_state")
+workflow.add_edge("branch_none", "apply_cleaning")
 
 # continue pipeline
 workflow.add_edge("apply_cleaning", "apply_text_processing")
@@ -894,8 +915,8 @@ def handle_file_upload():
             )
             text_option = st.selectbox(
                 "Text processing option",
-                ["none", "lowercase", "tokenize", "lowercase+tokenize"],
-                index=0,
+                options=["none", "lowercase", "tokenize", "both"],
+                format_func=lambda x: "lowercase+tokenize" if x == "both" else x,
             )
 
         run = st.form_submit_button("Run Cleaning Workflow")
