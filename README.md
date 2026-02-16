@@ -21,7 +21,7 @@ The workflow follows these steps:
 6. **User Text Options** - Users can manually select columns to tokenize.
 6. **Describe Data** - Generates statistical summary of cleaned data
 7. **Output Results** - Prints the action taken and final summary
-8. **Visualize the Date** - The AI agent selects the best visualizations for the data and displays before and after paired plots. 
+8. **Visualize the Data** - The AI agent selects the best visualizations for the data and displays before and after paired plots. 
 
 ## Setup
 
