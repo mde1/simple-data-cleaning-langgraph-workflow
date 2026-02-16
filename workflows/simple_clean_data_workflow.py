@@ -53,11 +53,7 @@ class DataState(TypedDict, total=False):
 # ---------------------------
 # 2. Initialize LLM
 # ---------------------------
-api_key = os.getenv("OPENAI_API_KEY", "")
-st.sidebar.write("OPENAI_API_KEY set:", bool(api_key))
-if api_key:
-    st.sidebar.write("OPENAI_API_KEY prefix:", api_key[:7] + "…")
-    
+
 llm = ChatOpenAI(model="gpt-4o-mini")
 
 
