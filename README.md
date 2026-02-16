@@ -4,6 +4,8 @@ A simple example demonstrating how to build workflows with LangGraph for data pr
 
 ## How It Works
 **Live Demo:** https://simple-data-cleaning-langgraph-workflow.onrender.com
+The demo may take a minute to restart if it hasn't been accessed recently.
+
 The workflow follows these steps:
 
 1. **Load Data** - Reads the CSV file into a pandas DataFrame
