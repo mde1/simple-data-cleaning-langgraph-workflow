@@ -43,7 +43,7 @@ class DataState(TypedDict, total=False):
     viz_reason: str
 
     # text cleaning
-    text_action: Literal["lowercase", "tokenize", "both", "none"]
+    text_action: Literal["lowercase", "tokenize", "lowercase+tokeniza", "none"]
     text_columns: list[str]
 
     # Decision
@@ -130,7 +130,7 @@ def apply_text_processing(state: DataState) -> DataState:
     elif action == "tokenize":
         df = tokenize_columns(df, columns)
 
-    elif action == "both":
+    elif action == "lowercase+tokeniza":
         df = lowercase_text_columns(df, columns if columns else None)
         df = tokenize_columns(df, columns)
 
@@ -894,7 +894,7 @@ def handle_file_upload():
             )
             text_option = st.selectbox(
                 "Text processing option",
-                ["none", "lowercase", "tokenize", "both"],
+                ["none", "lowercase", "tokenize", "lowercase+tokenize"],
                 index=0,
             )
 
