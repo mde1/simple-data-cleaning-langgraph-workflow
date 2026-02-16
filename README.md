@@ -3,6 +3,8 @@
 A simple example demonstrating how to build workflows with LangGraph for data processing.
 
 ## How It Works
+**Live Demo:** https://simple-data-cleaning-langgraph-workflow.onrender.com
+The demo may take a minute to restart if it hasn't been accessed recently.
 
 The workflow follows these steps:
 
@@ -12,12 +14,14 @@ The workflow follows these steps:
    - Dataset info (`.info()`)
    - Explicit missing value counts
 3. **LLM Reasoning** - Uses GPT-4o-mini to analyze the summary and decide which action to take
-4. **Conditional Routing** - Routes to appropriate cleaning node based on LLM decision
+4. **Conditional Routing** - Routes to appropriate cleaning node based on LLM decision, LLM selects visualizations for the data type.
 5. **Data Cleaning** - Can execute:
    - **Handle Missing Values** - Fills numeric missing values with column means
-   - **Remove Outliers** - Removes outliers using IQR (Interquartile Range) method
+   - **Winsorize Outliers** - Detect and winsorize numeric outliers (IQR method)
+6. **User Text Options** - Users can manually select columns to tokenize.
 6. **Describe Data** - Generates statistical summary of cleaned data
 7. **Output Results** - Prints the action taken and final summary
+8. **Visualize the Date** - The AI agent selects the best visualizations for the data and displays before and after paired plots. 
 
 ## Setup
 
